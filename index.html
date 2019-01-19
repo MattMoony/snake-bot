@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="./index.css" />
+
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/"
+        crossorigin="anonymous">
+</head>
+
+<body>
+    <canvas id="main_canvas" width="1200" height="800"></canvas>
+
+    <div id="overlays">
+
+        <div id="dev_overlays">
+
+            <div id="dev_info_div">
+                <table>
+                    <tr>
+                        <td>Tile coordinates: </td>
+                        <td>
+                            (<span id="cu_tile_x">x</span>,
+                            <span id="cu_tile_y">y</span>)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Snake head coordinates: </td>
+                        <td>
+                            (<span id="sh_tile_x">x</span>,
+                            <span id="sh_tile_y">y</span>)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Focused food coordinates: </td>
+                        <td>
+                            (<span id="fx">x</span>,
+                            <span id="fy">y</span>)
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div id="dev_input_div">
+                <table>
+                    <tr>
+                        <td>Food amount: </td>
+                        <td><input type="number" min="0" id="food_amount_in" placeholder="e.g.: 2" /></td>
+                    </tr>
+                    <tr>
+                        <td>Grow rate: </td>
+                        <td><input type="number" min="0" id="grow_rate_in" placeholder="e.g.: 1" /></td>
+                    </tr>
+                    <tr>
+                        <td>Game refresh pause: </td>
+                        <td><input type="number" min="1" id="refresh_rate_in" placeholder="e.g.: 75" /></td>
+                    </tr>
+                    <tr>
+                        <td>Dying enabled: </td>
+                        <td><input type="checkbox" id="dying_enabled_in" /></td>
+                    </tr>
+                    <tr>
+                        <td>Auto restart: </td>
+                        <td><input type="checkbox" id="auto_restart_in" /></td>
+                    </tr>
+                    <tr>
+                        <td>Brush type: </td>
+                        <td>
+                            <select id="brush_type_in">
+                                <option value="food">Food</option>
+                                <option value="obstacle">Obstacles</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+
+        <div id="cu_score_div">Score: <span id="current_score"></span></div>
+        <div id="hi_score_div">
+            <div id="high_uname"></div>
+            <div id="high_score"></div>
+        </div>
+
+    </div>
+
+
+    <script src="snake.js"></script>
+    <script src="newest_bot.js"></script>
+
+    <script>
+        // --- EVENT LISTENERS --- //
+
+        var glob_brush_type = "food";
+
+        window.onload = e => {
+            if (!localStorage.getItem("high_score"))
+                localStorage.setItem("high_score", 0);
+            if (!localStorage.getItem("high_uname"))
+                localStorage.setItem("high_uname", "");
+
+            document.getElementById("high_uname").innerHTML = localStorage.getItem("high_uname");
+            document.getElementById("high_score").innerHTML = localStorage.getItem("high_score");
+
+
+            document.getElementById('food_amount_in').value = glob_food_amount;
+            document.getElementById('grow_rate_in').value = glob_grow_rate;
+            document.getElementById('refresh_rate_in').value = glob_game_refresh_rate;
+            document.getElementById('dying_enabled_in').checked = glob_die_enabled;
+            document.getElementById('auto_restart_in').checked = glob_auto_restart;
+
+
+
+            // -- FOOD AMOUNT CHANGED -- //
+            document.getElementById('food_amount_in').onchange = function (e) {
+                glob_food_amount = this.value;
+                if (this.value > foods.length) {
+                    for (let i = 0; i < this.value - foods.length; i++)
+                        foods.push(new Food());
+                } else {
+                    foods.splice(this.value);
+                }
+            };
+
+            // -- GROW RATE CHANGED -- //
+            document.getElementById('grow_rate_in').onchange = function (e) {
+                glob_grow_rate = this.value;
+            };
+
+            // -- REFRESH RATE CHANGED -- //
+            document.getElementById('refresh_rate_in').onchange = function (e) {
+                glob_game_refresh_rate = this.value;
+
+                pause_game();
+                continue_game();
+            };
+
+            // -- DIE ENABLED CHANGED -- //
+            document.getElementById('dying_enabled_in').onchange = function (e) {
+                glob_die_enabled = this.checked;
+            };  
+
+            // -- AUTO RESTART CHANGED -- //
+            document.getElementById('auto_restart_in').onchange = function (e) {
+                glob_auto_restart = this.checked;
+            };
+
+            // -- BRUSH TYPE CHANGED -- //
+            document.getElementById('brush_type_in').onchange = function (e) {
+                glob_brush_type = this.value;
+            };
+
+
+            // -- ON MOUSEMOVE / LEFT CLICK / RIGHT CLICK -- //
+            document.getElementById('main_canvas').onmousemove = function (e) {
+                let rect = this.getBoundingClientRect(),
+                    x = Math.floor((e.clientX - rect.left) / glob_tile_size),
+                    y = Math.floor((e.clientY - rect.top) / glob_tile_size);
+
+                document.getElementById('cu_tile_x').innerHTML = x;
+                document.getElementById('cu_tile_y').innerHTML = y;
+
+                ctx.fillStyle = "rgba(255,255,255,0.05)";
+                ctx.fillRect(x * glob_tile_size, y * glob_tile_size, glob_tile_size, glob_tile_size);
+
+                switch (e.buttons) {
+                    case 1:
+                        {
+                            switch (glob_brush_type) {
+                                case 'food':
+                                    if (!inFoods([x * glob_tile_size, y * glob_tile_size]))
+                                        foods.push(new Food(x * glob_tile_size, y * glob_tile_size));
+                                    break;
+                                case 'obstacle':
+                                    if (!inObs([x, y]))
+                                        obstacles.push([x, y]);
+                                    break;
+                            }
+                        }
+                        break;
+                    case 2:
+                        {
+                            switch (glob_brush_type) {
+                                case 'food':
+                                    if (inFoods([x * glob_tile_size, y * glob_tile_size]))
+                                        delFood([x * glob_tile_size, y * glob_tile_size]);
+                                    break;
+                                case 'obstacle':
+                                    if (inObs([x, y]))
+                                        delObstacle([x, y]);
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            };
+            // -- LEFT CLICK -- //
+            document.getElementById('main_canvas').onclick = function (e) {
+                let rect = this.getBoundingClientRect(),
+                    x = Math.floor((e.clientX - rect.left) / glob_tile_size),
+                    y = Math.floor((e.clientY - rect.top) / glob_tile_size);
+
+                switch (glob_brush_type) {
+                    case 'food':
+                        if (!inFoods([x * glob_tile_size, y * glob_tile_size]))
+                            foods.push(new Food(x * glob_tile_size, y * glob_tile_size));
+                        break;
+                    case 'obstacle':
+                        if (!inObs([x, y]))
+                            obstacles.push([x, y]);
+                        break;
+                }
+            };
+            // -- RIGHT CLICK -- // 
+            document.getElementById('main_canvas').oncontextmenu = function (e) {
+                e.preventDefault();
+
+                let rect = this.getBoundingClientRect(),
+                    x = Math.floor((e.clientX - rect.left) / glob_tile_size),
+                    y = Math.floor((e.clientY - rect.top) / glob_tile_size);
+
+                switch (glob_brush_type) {
+                    case 'food':
+                        if (inFoods([x * glob_tile_size, y * glob_tile_size]))
+                            delFood([x * glob_tile_size, y * glob_tile_size]);
+                        break;
+                    case 'obstacle':
+                        if (inObs([x, y]))
+                            delObstacle([x, y]);
+                        break;
+                }
+            };
+
+
+
+            start_game();
+        };
+        window.onkeydown = e => {
+            switch (e.keyCode) {
+                // right:
+                case 68: // D
+                case 39: // <ARROW_RIGHT>
+                    eventQueue[0] = 0;
+                    break;
+                    // left: 
+                case 65: // A
+                case 37: // <ARROW_LEFT>
+                    eventQueue[0] = 1;
+                    break;
+                    // bottom:
+                case 83: // S
+                case 40: // <ARROW_DOWN>
+                    eventQueue[0] = 2;
+                    break;
+                    // top:
+                case 87: // W
+                case 38: // <ARROW_UP>
+                    eventQueue[0] = 3;
+                    break;
+                case 32: // SPACE-BAR
+                    {
+                        if (!paused)
+                            pause_game();
+                        else
+                            continue_game();
+                    }
+                    break;
+                case 13: // ENTER
+                    {
+                        if (!running)
+                            start_game();
+                    }
+                    break;
+
+
+                case 112: // F1
+                    {
+                        e.preventDefault();
+                        glob_show_grid = !glob_show_grid;
+                    }
+                    break;
+                case 113: // F2
+                    {
+                        e.preventDefault();
+                        glob_show_astar = !glob_show_astar;
+                    }
+                    break;
+                case 114: // F3
+                    {
+                        e.preventDefault();
+
+                        if (e.shiftKey)
+                            document.getElementById('dev_overlays').style.display = "block";
+                        else
+                            document.getElementById('dev_overlays').style.display = "none";
+
+                        document.getElementById('overlays').style.display =
+                        document.getElementById('overlays').style.display == "block" ? "none" : "block";
+                    }
+                    break;
+            }
+        };
+    </script>
+</body>
+
+</html>

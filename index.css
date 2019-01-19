@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css?family=Major+Mono+Display');
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+body {
+    text-align: center;
+    background-color: #111;
+    font-family: 'Major Mono Display';
+}
+
+button {
+    margin: 0 15px;
+}
+
+#high_uname,
+#high_score {
+    color: white;
+}
+
+canvas {
+    background-color: black;
+    border: 1.5px solid #5AFFBE;
+    cursor: crosshair;
+}
+
+#overlays {
+    display: block;
+}
+#dev_overlays {
+    display: none;
+}
+
+#cu_score_div {
+    position: fixed;
+    left: 15px;
+    top: 25px;
+    color: white;
+    font-size: 25px;
+    vertical-align: middle;
+}
+
+#current_score {
+    font-size: 50px;
+}
+
+#hi_score_div {
+    position: fixed;
+    right: 15px;
+    top: 25px;
+    color: white;
+    font-size: 25px;
+    vertical-align: middle;
+}
+
+
+
+#dev_info_div {
+    color: white;
+    position: fixed;
+    bottom: 25px; left: 25px;
+    text-align: left;
+}
+
+#dev_input_div {
+    color: white;
+    position: fixed;
+    bottom: 25px; right: 25px;
+    text-align: left;
+}
+#dev_input_div input {
+    background-color: rgba(0,0,0,0);
+    color: #fff;
+    border: none;
+    font-family: 'Roboto';
+    text-align: right;
+    padding: 0 15px;
+}
+#dev_input_div input[type="checkbox"] {
+    margin-right: 25px;
+}
+#dev_input_div select {
+    margin-right: 25px;
+    background-color: rgba(0,0,0,0);
+    color: #fff;
+    padding: 2.5px 7.5px;
+}
+#dev_input_div select option {
+    background-color: #111;
+    color: #fff;
+}
+#dev_input_div select:focus {
+    outline: none;
+}
+#dev_input_div input:focus {
+    outline: none;
+}
+#dev_input_div td:last-child {
+    text-align: right;
+}
